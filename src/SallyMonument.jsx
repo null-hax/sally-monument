@@ -1,134 +1,89 @@
-import React, { useEffect, useState } from 'react';
-import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
-import { Sparkles, Heart, ChevronDown } from 'lucide-react';
+import React from 'react';
+import { motion } from 'framer-motion';
+import { Star, Sparkles, Heart } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
+import MusicPlayer from './components/MusicPlayer';
 
-const SallyMonument = () => {
-  const { scrollYProgress } = useScroll();
-  const opacity = useTransform(scrollYProgress, [0, 0.2], [1, 0]);
-  const scale = useTransform(scrollYProgress, [0, 0.2], [1, 0.95]);
-  const [mounted, setMounted] = useState(false);
+const GlossyButton = ({ children, className = "", onClick }) => (
+  <button 
+    onClick={onClick}
+    className={`relative group overflow-hidden bg-white/30 backdrop-blur-md border border-white/40 px-6 py-2 rounded-full shadow-[0_8px_32px_0_rgba(255,102,178,0.37)] hover:bg-white/40 transition-all active:scale-95 cursor-pointer ${className}`}
+  >
+    <div className="absolute inset-0 bg-gradient-to-b from-white/40 to-transparent pointer-events-none" />
+    <span className="relative z-10 text-white font-black tracking-tight">{children}</span>
+  </button>
+);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) return null;
-
+export default function SallyMonument({ isPlaying, setIsPlaying }) {
   return (
-    <div className="min-h-screen bg-[#050505] selection:bg-[#d4af37]/30">
-      {/* Background Ambience */}
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#d4af37]/5 blur-[120px] rounded-full" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#d4af37]/5 blur-[120px] rounded-full" />
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-[#FFB6C2] via-[#FF69B4] to-[#7BC9FF] overflow-hidden flex items-center justify-center p-4 font-sans selection:bg-white selection:text-pink-500 relative">
+      
+      {/* Frutiger Aero Elements */}
+      <div className="absolute inset-0 z-0">
+        <div className="absolute top-[-10%] right-[-10%] w-[60%] h-[60%] bg-blue-300/30 rounded-full blur-[120px] animate-pulse" />
+        <div className="absolute bottom-[-20%] left-[-10%] w-[70%] h-[70%] bg-pink-300/20 rounded-full blur-[100px]" />
+        
+        {/* Animated Bubbles */}
+        {[...Array(12)].map((_, i) => (
+          <motion.div
+            key={i}
+            initial={{ y: '110vh', x: `${Math.random() * 100}vw`, scale: Math.random() * 0.5 + 0.5 }}
+            animate={{ y: '-20vh', x: `${(Math.random() * 100) + (Math.sin(i) * 50)}vw` }}
+            transition={{ duration: 15 + Math.random() * 10, repeat: Infinity, ease: "linear", delay: i * 2 }}
+            className="absolute rounded-full bg-white/20 backdrop-blur-[2px] border border-white/30 shadow-[inset_0_0_20px_rgba(255,255,255,0.5)]"
+            style={{ width: `${Math.random() * 80 + 20}px`, height: `${Math.random() * 80 + 20}px` }}
+          />
+        ))}
       </div>
 
-      {/* Hero Section */}
-      <section className="relative h-screen flex flex-col items-center justify-center px-6 overflow-hidden">
-        <motion.div 
-          style={{ opacity, scale }}
-          className="text-center z-10"
-        >
+      <motion.div 
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="relative z-10 w-full max-w-2xl bg-white/20 backdrop-blur-2xl border border-white/50 rounded-[4rem] p-12 shadow-[0_32px_64px_rgba(0,0,0,0.1)] overflow-hidden"
+      >
+        {/* Gloss Overlay */}
+        <div className="absolute top-0 left-0 w-full h-[40%] bg-gradient-to-b from-white/40 to-transparent pointer-events-none" />
+        
+        <header className="text-center mb-12">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
+            animate={{ rotate: [0, 5, -5, 0], scale: [1, 1.1, 1] }}
+            transition={{ duration: 4, repeat: Infinity }}
+            className="inline-block mb-6"
           >
-            <span className="text-[#d4af37] tracking-[0.3em] text-xs uppercase mb-8 block font-medium">
-              In Eternal Devotion
-            </span>
-            <h1 className="text-8xl md:text-[12rem] serif font-light tracking-tighter mb-4 relative">
-              <span className="gold-text">Sally</span>
-              <motion.div 
-                className="absolute -top-10 -right-10 md:-top-20 md:-right-20"
-                animate={{ 
-                  scale: [1, 1.1, 1],
-                  opacity: [0.3, 0.6, 0.3]
-                }}
-                transition={{ duration: 8, repeat: Infinity }}
-              >
-                <Sparkles className="w-12 h-12 text-[#d4af37]/20" />
-              </motion.div>
-            </h1>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1, duration: 2 }}
-            className="serif italic text-2xl md:text-3xl text-zinc-400 font-light mt-8"
-          >
-            A monument to grace, a sanctuary of memory.
-          </motion.div>
-        </motion.div>
-
-        <motion.div 
-          className="absolute bottom-12 left-1/2 -translate-x-1/2"
-          animate={{ y: [0, 10, 0] }}
-          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-        >
-          <ChevronDown className="w-6 h-6 text-zinc-600" />
-        </motion.div>
-      </section>
-
-      {/* Content Section */}
-      <section className="relative py-32 px-6 max-w-4xl mx-auto space-y-32">
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 2 }}
-          className="text-center space-y-12"
-        >
-          <div className="h-px w-24 bg-gradient-to-r from-transparent via-[#d4af37]/50 to-transparent mx-auto" />
-          <p className="serif text-3xl md:text-4xl leading-relaxed text-zinc-300 font-light italic">
-            "Your essence remains the golden thread woven through the tapestry of existence."
-          </p>
-          <div className="h-px w-24 bg-gradient-to-r from-transparent via-[#d4af37]/50 to-transparent mx-auto" />
-        </motion.div>
-
-        <div className="grid md:grid-cols-2 gap-12 items-center">
-          <motion.div 
-            whileHover={{ scale: 1.02 }}
-            className="aspect-[4/5] bg-zinc-900/50 border border-zinc-800 rounded-sm overflow-hidden relative group"
-          >
-             <div className="absolute inset-0 bg-[#d4af37]/5 mix-blend-overlay group-hover:bg-[#d4af37]/10 transition-all duration-700" />
-             <div className="absolute inset-0 flex items-center justify-center">
-                <Heart className="w-12 h-12 text-[#d4af37]/10 group-hover:text-[#d4af37]/20 transition-all duration-700" />
-             </div>
+            <div className="w-24 h-24 bg-gradient-to-tr from-white to-pink-200 rounded-[2rem] flex items-center justify-center shadow-2xl skew-x-3 rotate-3">
+              <Star className="text-pink-500 w-12 h-12 fill-pink-500" />
+            </div>
           </motion.div>
           
-          <div className="space-y-8">
-            <h3 className="serif text-2xl text-[#d4af37]">Eternal Grace</h3>
-            <p className="text-zinc-400 leading-relaxed font-light">
-              This space is dedicated to the legacy of Sally—a soul who embodied the very concept of ethereal elegance. Every movement she made was like a soft light in a dimly lit room, bringing warmth and clarity to everyone fortunate enough to know her.
-            </p>
-            <p className="text-zinc-400 leading-relaxed font-light">
-              She lived with a precision and beauty that resonated like a well-tuned chord, leaving behind a resonance that still echoes in the hearts of those she loved.
-            </p>
+          <h1 className="text-8xl font-black italic tracking-tighter text-white drop-shadow-[0_4px_4px_rgba(255,105,180,0.5)] mb-2">
+            SALLY
+          </h1>
+          <div className="flex items-center justify-center gap-2 opacity-60">
+            <Sparkles size={14} className="text-white" />
+            <span className="text-[10px] uppercase font-bold tracking-[0.5em] text-white">Digital Grace Manifest v4.1</span>
+            <Sparkles size={14} className="text-white" />
           </div>
-        </div>
+        </header>
 
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true }}
-          className="p-16 border border-[#d4af37]/20 rounded-sm text-center space-y-8 relative overflow-hidden"
-        >
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#d4af37]/2 to-transparent" />
-          <h2 className="serif text-4xl font-light italic text-[#d4af37]">A Digital Sanctuary</h2>
-          <p className="text-zinc-400 max-w-2xl mx-auto font-light leading-relaxed">
-            Refined, bespoke, and forever present. This monument is built with the same intentionality and grace that Sally brought to the world.
-          </p>
-        </motion.div>
-      </section>
+        <MusicPlayer isPlaying={isPlaying} setIsPlaying={setIsPlaying} />
 
-      {/* Footer */}
-      <footer className="py-24 px-6 text-center border-t border-zinc-900">
-        <div className="gold-text serif text-2xl font-light mb-4">Sally</div>
-        <p className="text-zinc-600 text-sm tracking-widest uppercase">Nullhax Legacy | Never Forgotten</p>
-      </footer>
+        <footer className="mt-12 flex justify-between items-center text-white/40">
+           <div className="flex gap-2">
+             <Heart size={16} />
+             <Heart size={16} />
+             <Heart size={16} />
+           </div>
+           <NavLink to="/dreamscape">
+             <GlossyButton className="text-[10px] uppercase tracking-[0.3em] font-black italic">
+               Enter Dreamscape
+             </GlossyButton>
+           </NavLink>
+        </footer>
+      </motion.div>
+
+      <div className="fixed bottom-8 right-8 text-white/20 text-[10px] font-black uppercase tracking-[0.6em] vertical-text">
+        nullhax_manifest_0xFF
+      </div>
     </div>
   );
-};
-
-export default SallyMonument;
+}

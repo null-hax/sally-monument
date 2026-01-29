@@ -1,23 +1,60 @@
 @import "tailwindcss";
 
-:root {
-  --font-serif: "Playfair Display", serif;
-  --font-sans: "Inter", sans-serif;
+@layer base {
+  :root {
+    --glass-bg: rgba(255, 255, 255, 0.4);
+    --glass-border: rgba(255, 255, 255, 0.6);
+    --glossy-pink: #ff69b4;
+    --glossy-blue: #00d4ff;
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: #00d4ff; /* Fallback */
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
 }
 
-body {
-  background: #050505;
-  color: #fafafa;
-  overflow-x: hidden;
-  -webkit-font-smoothing: antialiased;
+.frutiger-glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.8),
+    0 8px 32px rgba(0, 0, 0, 0.1);
 }
 
-.serif {
-  font-family: var(--font-serif);
+.glossy-button {
+  background: linear-gradient(to bottom, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.1) 100%);
+  border: 1px solid rgba(255,255,255,0.5);
+  border-radius: 9999px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.8);
+  transition: all 0.2s;
 }
 
-.gold-text {
-  background: linear-gradient(135deg, #d4af37 0%, #f9f295 50%, #d4af37 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+.glossy-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.9);
+}
+
+.glossy-button:active {
+  transform: translateY(0px);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1), inset 0 1px 2px rgba(0,0,0,0.2);
+}
+
+.text-glossy {
+  color: white;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.2), 0 0 10px rgba(255,255,255,0.5);
+}
+
+/* Custom fonts for frutiger aero vibe */
+@font-face {
+  font-family: 'Frutiger';
+  src: local('Segoe UI'), local('Arial Rounded MT Bold'), local('Helvetica Rounded'), sans-serif;
+}
+
+.font-frutiger {
+  font-family: 'Frutiger', 'Segoe UI', sans-serif;
 }
