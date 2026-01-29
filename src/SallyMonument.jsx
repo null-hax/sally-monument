@@ -1,36 +1,19 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import { Star, Sparkles, Heart } from 'lucide-react';
-import { NavLink } from 'react-router-dom';
-import MusicPlayer from './components/MusicPlayer';
-
-const GlossyButton = ({ children, className = "", onClick }) => (
-  <button 
-    onClick={onClick}
-    className={`relative group overflow-hidden bg-white/30 backdrop-blur-md border border-white/40 px-6 py-2 rounded-full shadow-[0_8px_32px_0_rgba(255,102,178,0.37)] hover:bg-white/40 transition-all active:scale-95 cursor-pointer ${className}`}
-  >
-    <div className="absolute inset-0 bg-gradient-to-b from-white/40 to-transparent pointer-events-none" />
-    <span className="relative z-10 text-white font-black tracking-tight">{children}</span>
-  </button>
-);
-
-export default function SallyMonument({ isPlaying, setIsPlaying }) {
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-[#FFB6C2] via-[#FF69B4] to-[#7BC9FF] overflow-hidden flex items-center justify-center p-4 font-sans selection:bg-white selection:text-pink-500 relative">
       
       {/* Frutiger Aero Elements */}
       <div className="absolute inset-0 z-0">
-        <div className="absolute top-[-10%] right-[-10%] w-[60%] h-[60%] bg-blue-300/30 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute bottom-[-20%] left-[-10%] w-[70%] h-[70%] bg-pink-300/20 rounded-full blur-[100px]" />
+        <div className="absolute top-[-10%] right-[-10%] w-[60%] h-[60%] bg-blue-300/30 rounded-full blur-[120px] md:block hidden" />
+        <div className="absolute bottom-[-20%] left-[-10%] w-[70%] h-[70%] bg-pink-300/20 rounded-full blur-[100px] md:block hidden" />
         
-        {/* Animated Bubbles */}
-        {[...Array(12)].map((_, i) => (
+        {/* Animated Bubbles - mobile friendly count */}
+        {[...Array(window.innerWidth < 768 ? 8 : 12)].map((_, i) => (
           <motion.div
             key={i}
             initial={{ y: '110vh', x: `${Math.random() * 100}vw`, scale: Math.random() * 0.5 + 0.5 }}
             animate={{ y: '-20vh', x: `${(Math.random() * 100) + (Math.sin(i) * 50)}vw` }}
             transition={{ duration: 15 + Math.random() * 10, repeat: Infinity, ease: "linear", delay: i * 2 }}
-            className="absolute rounded-full bg-white/20 backdrop-blur-[2px] border border-white/30 shadow-[inset_0_0_20px_rgba(255,255,255,0.5)]"
+            className="absolute rounded-full bg-white/20 backdrop-blur-[2px] border border-white/30 shadow-[inset_0_0_20px_rgba(255,255,255,0.5)] md:block hidden"
             style={{ width: `${Math.random() * 80 + 20}px`, height: `${Math.random() * 80 + 20}px` }}
           />
         ))}
@@ -55,7 +38,7 @@ export default function SallyMonument({ isPlaying, setIsPlaying }) {
             </div>
           </motion.div>
           
-          <h1 className="text-8xl font-black italic tracking-tighter text-white drop-shadow-[0_4px_4px_rgba(255,105,180,0.5)] mb-2">
+          <h1 className="text-6xl md:text-8xl font-black italic tracking-tighter text-white drop-shadow-[0_4px_4px_rgba(255,105,180,0.5)] mb-2">
             SALLY
           </h1>
           <div className="flex items-center justify-center gap-2 opacity-60">
@@ -69,19 +52,19 @@ export default function SallyMonument({ isPlaying, setIsPlaying }) {
 
         <footer className="mt-12 flex justify-between items-center text-white/40">
            <div className="flex gap-2">
-             <Heart size={16} />
+             <Heart size={16} className="hidden md:inline" />
              <Heart size={16} />
              <Heart size={16} />
            </div>
            <NavLink to="/dreamscape">
-             <GlossyButton className="text-[10px] uppercase tracking-[0.3em] font-black italic">
+             <GlossyButton className="text-[10px] uppercase tracking-[0.3em] font-black italic px-4 py-2 md:px-6 md:py-2">
                Enter Dreamscape
              </GlossyButton>
            </NavLink>
         </footer>
       </motion.div>
 
-      <div className="fixed bottom-8 right-8 text-white/20 text-[10px] font-black uppercase tracking-[0.6em] vertical-text">
+      <div className="fixed bottom-8 right-8 text-white/20 text-[10px] font-black uppercase tracking-[0.6em] vertical-text hidden md:block">
         nullhax_manifest_0xFF
       </div>
     </div>
