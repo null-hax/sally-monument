@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+:root {
+  --font-serif: "Playfair Display", serif;
+  --font-sans: "Inter", sans-serif;
+}
+
+body {
+  background: #050505;
+  color: #fafafa;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+.serif {
+  font-family: var(--font-serif);
+}
+
+.gold-text {
+  background: linear-gradient(135deg, #d4af37 0%, #f9f295 50%, #d4af37 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
