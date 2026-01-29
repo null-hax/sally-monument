@@ -169,7 +169,7 @@ export default function Dreamscape() {
 
   const flowers = useMemo(() => {
     const colors = ["#ff1493", "#ff69b4", "#ffb6c1", "#ff0080", "#ff4500", "#ff6347"];
-    return Array.from({ length, 60 }).map((_, i) => ({
+    return Array.from({ length: 60 }).map((_, i) => ({
       position: [
         (Math.random() - 0.5) * 30,
         (Math.random() - 0.5) * 20 - 5,
@@ -182,7 +182,7 @@ export default function Dreamscape() {
   }, []);
 
   const nexusPositions = useMemo(() => {
-    return Array.from({ length, 8 }).map((_, i) => [
+    return Array.from({ length: 8 }).map((_, i) => [
       (Math.random() - 0.5) * 20,
       (Math.random() - 0.5) * 15 + 2,
       (Math.random() - 0.5) * 20,
