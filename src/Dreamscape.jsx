@@ -391,6 +391,7 @@ function Lighting({ isMobile }) {
 function Scene() {
   const isMobile = useMediaQuery({ maxWidth: 768 });
   const [interactive, setInteractive] = useState(true);
+  const cameraRef = useRef();
 
   return (
     <>
@@ -400,23 +401,23 @@ function Scene() {
       {/* Starfield */}
       {!isMobile && <Stars radius={100} depth={50} count={2000} factor={4} saturation={0} fade />}
 
-      {/* Frutiger Aero Elements */}
+      {/* Main Glossy Spheres - Interactive focal points */}
       <GlossySphere position={[5, 4, 0]} color="#ff1493" size={1.5} interactive />
       <GlossySphere position={[-5, 3, 2]} color="#00ffff" size={1.2} interactive />
       <GlossySphere position={[0, 6, -8]} color="#ffff00" size={0.8} interactive />
 
-      {/* Crystal lines */}
+      {/* Crystal lines connecting the center */}
       <CrystalLine start={[0, 0, 0]} end={[5, 5, 5]} color="#00ff00" />
       <CrystalLine start={[0, 0, 0]} end={[-5, 3, -5]} color="#ff00ff" />
       <CrystalLine start={[0, 0, 0]} end={[3, -2, 6]} color="#00ffff" />
 
-      {/* Liquid surface */}
+      {/* Liquid surface - animated ground */}
       <LiquidSurface position={[0, -8, 0]} />
 
-      {/* Particle effects */}
+      {/* Particle effects - main emitter */}
       <ParticleSystem position={[0, 2, 0]} count={isMobile ? 250 : 500} />
 
-      {/* Physics objects */}
+      {/* Physics-driven interactive spheres */}
       {[...Array(5)].map((_, i) => (
         <PhysicsSphere
           key={`phys-${i}`}
@@ -430,7 +431,7 @@ function Scene() {
         />
       ))}
 
-      {/* Contact shadows */}
+      {/* Contact shadows for depth */}
       <ContactShadows 
         position={[0, -7.99, 0]} 
         opacity={isMobile ? 0.15 : 0.4} 
@@ -439,8 +440,9 @@ function Scene() {
         far={isMobile ? 4 : 8}
       />
 
-      {/* OrbitControls */}
+      {/* Interactive camera controls */}
       <OrbitControls 
+        ref={cameraRef}
         makeDefault 
         autoRotate={!isMobile}
         autoRotateSpeed={0.3}
