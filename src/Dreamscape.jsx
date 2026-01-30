@@ -1,201 +1,203 @@
-'use client';
-
-import React, { useRef, useMemo, useState, useEffect } from 'react';
+import React, { useRef, useMemo, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { 
-  OrbitControls, 
-  Stars, 
-  ContactShadows,
-  useGLTF,
-  Sphere,
-  Box,
-  Torus,
-  Float,
-  Text3D,
-  Center,
-  Text
-} from '@react-three/drei';
+import { OrbitControls, Stars, ContactShadows, Preload } from '@react-three/drei';
 import { motion } from 'framer-motion';
 import * as THREE from 'three';
-import { useMediaQuery } from 'react-responsive';
 
-// ============ PHYSICS SETUP ============
-// Using Cannon-es for lightweight physics without extra dependencies
-class SimplePhysicsWorld {
-  constructor() {
-    this.bodies = [];
-    this.gravity = new THREE.Vector3(0, -9.8, 0);
-  }
+/**
+ * DREAMSCAPE - Interactive 3D Experience
+ * Frutiger Aero aesthetic with physics, particles, and buttery-smooth performance
+ */
 
-  addBody(mesh, mass = 1, shape = 'sphere') {
-    const body = {
-      mesh,
-      mass,
-      velocity: new THREE.Vector3(),
-      acceleration: new THREE.Vector3(),
-      shape,
-      radius: mesh.geometry?.parameters?.radius || 0.5,
-      restitution: 0.6,
-      damping: 0.01
-    };
-    this.bodies.push(body);
-    return body;
-  }
-
-  step(dt = 0.016) {
-    // Simple Euler physics integration
-    for (let body of this.bodies) {
-      if (body.mass === 0) continue; // Static
-
-      // Apply gravity
-      body.acceleration.copy(this.gravity);
-
-      // Update velocity with damping
-      body.velocity.addScaledVector(body.acceleration, dt);
-      body.velocity.multiplyScalar(1 - body.damping);
-
-      // Update position
-      body.mesh.position.addScaledVector(body.velocity, dt);
-
-      // Boundary collisions (simple AABB)
-      const bounds = 15;
-      if (body.mesh.position.x > bounds) {
-        body.mesh.position.x = bounds;
-        body.velocity.x *= -body.restitution;
-      }
-      if (body.mesh.position.x < -bounds) {
-        body.mesh.position.x = -bounds;
-        body.velocity.x *= -body.restitution;
-      }
-      if (body.mesh.position.z > bounds) {
-        body.mesh.position.z = bounds;
-        body.velocity.z *= -body.restitution;
-      }
-      if (body.mesh.position.z < -bounds) {
-        body.mesh.position.z = -bounds;
-        body.velocity.z *= -body.restitution;
-      }
-
-      // Ground collision
-      if (body.mesh.position.y - body.radius < -8) {
-        body.mesh.position.y = -8 + body.radius;
-        body.velocity.y *= -body.restitution;
-      }
-    }
-
-    // Simple sphere-sphere collisions
-    for (let i = 0; i < this.bodies.length; i++) {
-      for (let j = i + 1; j < this.bodies.length; j++) {
-        const b1 = this.bodies[i];
-        const b2 = this.bodies[j];
-        const dx = b2.mesh.position.x - b1.mesh.position.x;
-        const dy = b2.mesh.position.y - b1.mesh.position.y;
-        const dz = b2.mesh.position.z - b1.mesh.position.z;
-        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-        const minDist = b1.radius + b2.radius;
-
-        if (dist < minDist) {
-          const nx = dx / dist;
-          const ny = dy / dist;
-          const nz = dz / dist;
-          const overlap = minDist - dist;
-
-          b1.mesh.position.addScaledVector(new THREE.Vector3(nx, ny, nz), -overlap / 2);
-          b2.mesh.position.addScaledVector(new THREE.Vector3(nx, ny, nz), overlap / 2);
-
-          const rel = new THREE.Vector3()
-            .subVectors(b2.velocity, b1.velocity);
-          const relNormal = rel.dot(new THREE.Vector3(nx, ny, nz));
-
-          if (relNormal < 0) {
-            const restitution = (b1.restitution + b2.restitution) / 2;
-            const impulse = -(1 + restitution) * relNormal / (b1.mass + b2.mass);
-
-            b1.velocity.addScaledVector(new THREE.Vector3(nx, ny, nz), -impulse * b2.mass);
-            b2.velocity.addScaledVector(new THREE.Vector3(nx, ny, nz), impulse * b1.mass);
-          }
-        }
-      }
-    }
-  }
-}
-
-// ============ FRUTIGER AERO COMPONENTS ============
-
-// Glossy sphere with metallic sheen
-function GlossySphere({ position, color, size, interactive }) {
+// ============ INTERACTIVE GLOSSY SPHERE ============
+function GlossySphere({ position, color, size = 1, speed = 1 }) {
   const meshRef = useRef();
-  const worldRef = useRef();
-  const [isHovered, setIsHovered] = useState(false);
+  const [hovered, setHovered] = useState(false);
 
-  useFrame(() => {
-    if (interactive && meshRef.current) {
-      meshRef.current.rotation.x += 0.01;
-      meshRef.current.rotation.y += 0.02;
+  useFrame(({ clock }) => {
+    if (!meshRef.current) return;
+    
+    const t = clock.getElapsedTime() * speed;
+    // Gentle bobbing
+    meshRef.current.position.y = position[1] + Math.sin(t * 0.7) * 0.3;
+    // Smooth rotation
+    meshRef.current.rotation.x += 0.005;
+    meshRef.current.rotation.y += 0.008;
+    
+    // Pulse on hover
+    if (hovered) {
+      meshRef.current.scale.lerp(new THREE.Vector3(1.2, 1.2, 1.2), 0.1);
+    } else {
+      meshRef.current.scale.lerp(new THREE.Vector3(1, 1, 1), 0.1);
     }
   });
 
   return (
-    <mesh 
-      ref={meshRef} 
-      position={position}
-      onPointerEnter={() => setIsHovered(true)}
-      onPointerLeave={() => setIsHovered(false)}
-      castShadow
-      receiveShadow
-    >
-      <sphereGeometry args={[size, 32, 32]} />
-      <meshStandardMaterial
-        color={color}
-        metalness={0.8}
-        roughness={0.2}
-        emissive={isHovered ? color : '#000000'}
-        emissiveIntensity={isHovered ? 0.3 : 0}
-      />
+    <group position={position}>
+      <mesh
+        ref={meshRef}
+        position={[0, 0, 0]}
+        onPointerEnter={() => setHovered(true)}
+        onPointerLeave={() => setHovered(false)}
+        castShadow
+      >
+        <sphereGeometry args={[size, 64, 64]} />
+        <meshPhysicalMaterial
+          color={color}
+          metalness={0.9}
+          roughness={0.1}
+          transmission={0.1}
+          thickness={0.5}
+          ior={1.5}
+          emissive={hovered ? color : '#000000'}
+          emissiveIntensity={hovered ? 0.4 : 0.05}
+        />
+      </mesh>
       
-      {/* Highlight for glossy effect */}
-      <mesh scale={1.05}>
+      {/* Glossy highlight */}
+      <mesh position={[0, 0, 0]} scale={1.05}>
         <sphereGeometry args={[size, 32, 32]} />
         <meshBasicMaterial
           transparent
-          opacity={0.3}
+          opacity={hovered ? 0.4 : 0.15}
           color="#ffffff"
         />
       </mesh>
+    </group>
+  );
+}
+
+// ============ CRYSTAL RING ============
+function CrystalRing({ position, color, scale = 1, speed = 1 }) {
+  const meshRef = useRef();
+
+  useFrame(({ clock }) => {
+    if (!meshRef.current) return;
+    const t = clock.getElapsedTime() * speed;
+    meshRef.current.rotation.x = Math.sin(t * 0.5) * 0.5;
+    meshRef.current.rotation.y = t * 0.4;
+    meshRef.current.rotation.z = Math.cos(t * 0.3) * 0.3;
+  });
+
+  return (
+    <mesh ref={meshRef} position={position} scale={scale} castShadow>
+      <torusGeometry args={[2, 0.3, 16, 100]} />
+      <meshPhysicalMaterial
+        color={color}
+        metalness={0.95}
+        roughness={0.05}
+        transmission={0.3}
+        emissive={color}
+        emissiveIntensity={0.2}
+      />
     </mesh>
   );
 }
 
-// Crystalline form with fractal geometry
-function CrystalLine({ start, end, color }) {
-  const points = [
-    new THREE.Vector3(...start),
-    new THREE.Vector3(...end)
-  ];
-  const geometry = new THREE.BufferGeometry().setFromPoints(points);
+// ============ PARTICLE SYSTEM ============
+function Particles() {
+  const pointsRef = useRef();
+  const particlesRef = useRef([]);
+  const countRef = useRef(800);
+
+  useMemo(() => {
+    const particles = [];
+    for (let i = 0; i < countRef.current; i++) {
+      particles.push({
+        position: new THREE.Vector3(
+          (Math.random() - 0.5) * 30,
+          Math.random() * 20,
+          (Math.random() - 0.5) * 30
+        ),
+        velocity: new THREE.Vector3(
+          (Math.random() - 0.5) * 0.3,
+          (Math.random() - 0.5) * 0.3,
+          (Math.random() - 0.5) * 0.3
+        ),
+        life: Math.random() * 100,
+        maxLife: 100
+      });
+    }
+    particlesRef.current = particles;
+  }, []);
+
+  useFrame(() => {
+    const particles = particlesRef.current;
+    
+    for (let i = 0; i < particles.length; i++) {
+      const p = particles[i];
+      p.position.add(p.velocity);
+      p.life--;
+      
+      if (p.life <= 0) {
+        p.position.set(
+          (Math.random() - 0.5) * 30,
+          Math.random() * 20,
+          (Math.random() - 0.5) * 30
+        );
+        p.life = 100;
+      }
+    }
+
+    if (pointsRef.current) {
+      const positions = new Float32Array(particles.length * 3);
+      const sizes = new Float32Array(particles.length);
+      
+      for (let i = 0; i < particles.length; i++) {
+        positions[i * 3] = particles[i].position.x;
+        positions[i * 3 + 1] = particles[i].position.y;
+        positions[i * 3 + 2] = particles[i].position.z;
+        sizes[i] = (particles[i].life / particles[i].maxLife) * 0.15;
+      }
+      
+      pointsRef.current.geometry.attributes.position.array = positions;
+      pointsRef.current.geometry.attributes.position.needsUpdate = true;
+      pointsRef.current.geometry.attributes.size.array = sizes;
+      pointsRef.current.geometry.attributes.size.needsUpdate = true;
+    }
+  });
+
+  const positions = new Float32Array(countRef.current * 3);
+  const sizes = new Float32Array(countRef.current);
+
+  for (let i = 0; i < countRef.current; i++) {
+    positions[i * 3] = (Math.random() - 0.5) * 30;
+    positions[i * 3 + 1] = Math.random() * 20;
+    positions[i * 3 + 2] = (Math.random() - 0.5) * 30;
+    sizes[i] = Math.random() * 0.2;
+  }
 
   return (
-    <line geometry={geometry}>
-      <lineBasicMaterial color={color} linewidth={2} />
-    </line>
+    <points ref={pointsRef}>
+      <bufferGeometry>
+        <bufferAttribute
+          attach="attributes-position"
+          count={countRef.current}
+          array={positions}
+          itemSize={3}
+        />
+        <bufferAttribute
+          attach="attributes-size"
+          count={countRef.current}
+          array={sizes}
+          itemSize={1}
+        />
+      </bufferGeometry>
+      <pointsMaterial
+        size={0.15}
+        color="#ff1493"
+        sizeAttenuation
+        transparent
+        opacity={0.6}
+      />
+    </points>
   );
 }
 
-// Liquid surface effect with waves
-function LiquidSurface({ position }) {
+// ============ WAVE GROUND ============
+function WaveGround() {
   const meshRef = useRef();
   const materialRef = useRef();
-  const timeRef = useRef(0);
-
-  useFrame(() => {
-    timeRef.current += 0.01;
-    if (meshRef.current) {
-      meshRef.current.position.y = position[1] + Math.sin(timeRef.current) * 0.2;
-    }
-    if (materialRef.current) {
-      materialRef.current.uniforms.time.value = timeRef.current;
-    }
-  });
 
   const vertexShader = `
     uniform float time;
@@ -205,27 +207,37 @@ function LiquidSurface({ position }) {
     void main() {
       vUv = uv;
       vec3 pos = position;
-      pos.y += sin(pos.x * 3.0 + time) * 0.1;
-      pos.y += cos(pos.z * 3.0 + time * 0.7) * 0.1;
-      vWave = sin(pos.x * 2.0 + time) * cos(pos.z * 2.0 + time * 0.8);
+      float wave1 = sin((pos.x + time) * 0.5) * 0.8;
+      float wave2 = cos((pos.z + time * 0.7) * 0.5) * 0.8;
+      pos.y += wave1 + wave2;
+      vWave = (wave1 + wave2) * 0.5;
       gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
     }
   `;
 
   const fragmentShader = `
     uniform vec3 uColor;
+    uniform float time;
     varying vec2 vUv;
     varying float vWave;
 
     void main() {
-      vec3 color = mix(uColor, vec3(1.0), vWave * 0.2);
-      gl_FragColor = vec4(color, 0.8);
+      vec3 col = uColor;
+      col += vec3(sin(time) * 0.1, cos(time * 0.7) * 0.1, 0.1);
+      col = mix(col, vec3(1.0), vWave * 0.2);
+      gl_FragColor = vec4(col, 0.85);
     }
   `;
 
+  useFrame(() => {
+    if (materialRef.current?.uniforms) {
+      materialRef.current.uniforms.time.value += 0.016;
+    }
+  });
+
   return (
-    <mesh ref={meshRef} position={position} rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry args={[20, 20, 64, 64]} />
+    <mesh ref={meshRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, -15, 0]} receiveShadow>
+      <planeGeometry args={[60, 60, 128, 128]} />
       <shaderMaterial
         ref={materialRef}
         vertexShader={vertexShader}
@@ -241,284 +253,111 @@ function LiquidSurface({ position }) {
   );
 }
 
-// Interactive particle system
-function ParticleSystem({ position, count = 500 }) {
-  const pointsRef = useRef();
-  const particlesRef = useRef([]);
-  const timeRef = useRef(0);
-
-  useMemo(() => {
-    // Initialize particles
-    const particles = [];
-    for (let i = 0; i < count; i++) {
-      particles.push({
-        position: new THREE.Vector3(
-          (Math.random() - 0.5) * 8,
-          Math.random() * 4,
-          (Math.random() - 0.5) * 8
-        ),
-        velocity: new THREE.Vector3(
-          (Math.random() - 0.5) * 2,
-          Math.random() * 2,
-          (Math.random() - 0.5) * 2
-        ),
-        life: Math.random() * 100 + 50
-      });
-    }
-    particlesRef.current = particles;
-  }, [count]);
-
-  useFrame(() => {
-    timeRef.current += 0.016;
-    const particles = particlesRef.current;
-
-    for (let i = 0; i < particles.length; i++) {
-      const p = particles[i];
-      p.position.add(p.velocity);
-      p.life -= 1;
-      if (p.life <= 0) {
-        p.position.set(
-          (Math.random() - 0.5) * 8,
-          Math.random() * 4,
-          (Math.random() - 0.5) * 8
-        );
-        p.life = 100;
-      }
-    }
-
-    if (pointsRef.current) {
-      const positions = new Float32Array(particles.length * 3);
-      for (let i = 0; i < particles.length; i++) {
-        positions[i * 3] = particles[i].position.x;
-        positions[i * 3 + 1] = particles[i].position.y;
-        positions[i * 3 + 2] = particles[i].position.z;
-      }
-      pointsRef.current.geometry.attributes.position.array = positions;
-      pointsRef.current.geometry.attributes.position.needsUpdate = true;
-    }
-  });
-
-  const positions = new Float32Array(count * 3);
-  for (let i = 0; i < count; i++) {
-    positions[i * 3] = (Math.random() - 0.5) * 8;
-    positions[i * 3 + 1] = Math.random() * 4;
-    positions[i * 3 + 2] = (Math.random() - 0.5) * 8;
-  }
-
-  return (
-    <points ref={pointsRef} position={position}>
-      <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          count={count}
-          array={positions}
-          itemSize={3}
-        />
-      </bufferGeometry>
-      <pointsMaterial size={0.1} color="#ff69b4" sizeAttenuation />
-    </points>
-  );
-}
-
-// Physics-driven interactive sphere
-function PhysicsSphere({ position, color, size = 0.8 }) {
-  const meshRef = useRef();
-  const bodyRef = useRef();
-  const [physics] = useState(() => new SimplePhysicsWorld());
-
-  useEffect(() => {
-    if (meshRef.current) {
-      bodyRef.current = physics.addBody(meshRef.current, 1, 'sphere');
-      bodyRef.current.velocity.set(
-        (Math.random() - 0.5) * 5,
-        Math.random() * 2,
-        (Math.random() - 0.5) * 5
-      );
-    }
-  }, [physics]);
-
-  useFrame(() => {
-    physics.step();
-  });
-
-  return (
-    <mesh 
-      ref={meshRef} 
-      position={position}
-      castShadow
-      receiveShadow
-    >
-      <sphereGeometry args={[size, 16, 16]} />
-      <meshStandardMaterial 
-        color={color}
-        metalness={0.7}
-        roughness={0.3}
-      />
-    </mesh>
-  );
-}
-
-// ============ SCENE COMPONENTS ============
-
-function AnimatedBackground() {
-  const isMobile = useMediaQuery({ maxWidth: 768 });
-
-  return (
-    <>
-      <color attach="background" args={['#0a0e27']} />
-      <fog attach="fog" args={['#1a0f35', 10, isMobile ? 40 : 80]} />
-    </>
-  );
-}
-
-function Lighting({ isMobile }) {
-  return (
-    <>
-      <ambientLight intensity={0.5} color="#ff1493" />
-      <directionalLight 
-        position={[10, 15, 10]} 
-        intensity={1} 
-        color="#ff69b4"
-        castShadow={!isMobile}
-        shadow-mapSize-width={512}
-        shadow-mapSize-height={512}
-      />
-      <pointLight position={[-10, 5, -10]} intensity={0.5} color="#00ffff" />
-    </>
-  );
-}
-
+// ============ SCENE ============
 function Scene() {
-  const isMobile = useMediaQuery({ maxWidth: 768 });
-  const [interactive, setInteractive] = useState(true);
-  const cameraRef = useRef();
+  const controlsRef = useRef();
 
   return (
     <>
-      <AnimatedBackground />
-      <Lighting isMobile={isMobile} />
+      <color attach="background" args={['#0a0a1f']} />
+      <fog attach="fog" args={['#0f0f2e', 20, 100]} />
 
-      {/* Starfield */}
-      {!isMobile && <Stars radius={100} depth={50} count={2000} factor={4} saturation={0} fade />}
+      {/* Lighting */}
+      <ambientLight intensity={0.6} color="#ff1493" />
+      <directionalLight
+        position={[20, 30, 20]}
+        intensity={1.2}
+        color="#ff69b4"
+        castShadow
+        shadow-mapSize-width={2048}
+        shadow-mapSize-height={2048}
+      />
+      <pointLight position={[-20, 10, -20]} intensity={0.6} color="#00ffff" />
 
-      {/* Main Glossy Spheres - Interactive focal points */}
-      <GlossySphere position={[5, 4, 0]} color="#ff1493" size={1.5} interactive />
-      <GlossySphere position={[-5, 3, 2]} color="#00ffff" size={1.2} interactive />
-      <GlossySphere position={[0, 6, -8]} color="#ffff00" size={0.8} interactive />
+      {/* Stars background */}
+      <Stars radius={200} depth={50} count={2000} factor={4} saturation={0.3} />
 
-      {/* Crystal lines connecting the center */}
-      <CrystalLine start={[0, 0, 0]} end={[5, 5, 5]} color="#00ff00" />
-      <CrystalLine start={[0, 0, 0]} end={[-5, 3, -5]} color="#ff00ff" />
-      <CrystalLine start={[0, 0, 0]} end={[3, -2, 6]} color="#00ffff" />
+      {/* Main elements */}
+      <GlossySphere position={[10, 8, 0]} color="#ff1493" size={2.5} speed={0.5} />
+      <GlossySphere position={[-10, 6, 5]} color="#00ffff" size={2} speed={0.7} />
+      <GlossySphere position={[0, 10, -12]} color="#ffff00" size={1.5} speed={0.6} />
 
-      {/* Liquid surface - animated ground */}
-      <LiquidSurface position={[0, -8, 0]} />
+      {/* Crystal rings */}
+      <CrystalRing position={[8, -2, -8]} color="#00ff00" scale={1.2} speed={0.3} />
+      <CrystalRing position={[-8, 0, 8]} color="#ff00ff" scale={1} speed={0.4} />
+      <CrystalRing position={[0, 5, 0]} color="#00ffff" scale={0.8} speed={0.5} />
 
-      {/* Particle effects - main emitter */}
-      <ParticleSystem position={[0, 2, 0]} count={isMobile ? 250 : 500} />
+      {/* Particles */}
+      <Particles />
 
-      {/* Physics-driven interactive spheres */}
-      {[...Array(5)].map((_, i) => (
-        <PhysicsSphere
-          key={`phys-${i}`}
-          position={[
-            (Math.random() - 0.5) * 12,
-            8 + i * 2,
-            (Math.random() - 0.5) * 12
-          ]}
-          color={['#ff1493', '#00ffff', '#ffff00', '#00ff00', '#ff69b4'][i]}
-          size={0.6 + Math.random() * 0.4}
-        />
-      ))}
+      {/* Ground */}
+      <WaveGround />
 
-      {/* Contact shadows for depth */}
-      <ContactShadows 
-        position={[0, -7.99, 0]} 
-        opacity={isMobile ? 0.15 : 0.4} 
-        scale={isMobile ? 20 : 40}
-        blur={isMobile ? 1.5 : 4} 
-        far={isMobile ? 4 : 8}
+      {/* Shadows */}
+      <ContactShadows
+        position={[0, -14.9, 0]}
+        opacity={0.4}
+        scale={60}
+        blur={3}
+        far={20}
       />
 
-      {/* Interactive camera controls */}
-      <OrbitControls 
-        ref={cameraRef}
-        makeDefault 
-        autoRotate={!isMobile}
-        autoRotateSpeed={0.3}
-        enablePan={!isMobile}
-        maxPolarAngle={Math.PI / 1.5}
-        minDistance={isMobile ? 15 : 10}
-        maxDistance={isMobile ? 25 : 40}
-        enableZoom={!isMobile}
-        enableDamping={true}
+      {/* Camera controls */}
+      <OrbitControls
+        ref={controlsRef}
+        makeDefault
+        autoRotate
+        autoRotateSpeed={2}
+        enablePan={true}
+        enableZoom={true}
+        enableDamping
         dampingFactor={0.05}
+        maxDistance={80}
+        minDistance={20}
+        maxPolarAngle={Math.PI * 0.9}
       />
+
+      <Preload all />
     </>
   );
 }
 
 // ============ MAIN COMPONENT ============
-
 export default function Dreamscape() {
-  const isMobile = useMediaQuery({ maxWidth: 768 });
-
   return (
-    <div className="w-full h-screen bg-gradient-to-br from-[#0a0e27] via-[#1a0f35] to-[#0f0a1e] relative overflow-hidden">
-      {/* Canvas */}
+    <div className="w-full h-screen bg-black relative">
       <Canvas
-        shadows={!isMobile}
-        camera={{ position: [15, 12, 20], fov: isMobile ? 55 : 45 }}
-        dpr={isMobile ? [0.75, 1] : [1, 1.5]}
+        shadows
+        camera={{ position: [40, 30, 40], fov: 50 }}
         gl={{
-          antialias: !isMobile,
+          antialias: true,
           alpha: false,
-          powerPreference: isMobile ? "low-power" : "default",
-          depth: true,
+          powerPreference: 'high-performance',
           stencil: false,
-          premultipliedAlpha: true,
-          preserveDrawingBuffer: false,
-          failIfMajorPerformanceCaveat: false
+          depth: true
         }}
-        frameloop="demand"
-        onCreated={({ gl }) => {
-          if (isMobile) {
-            gl.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-          }
-        }}
+        dpr={[1, 1.5]}
+        frameloop="always"
       >
         <Scene />
       </Canvas>
 
-      {/* UI Overlay */}
-      <motion.div 
+      {/* UI */}
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5 }}
         className="absolute top-8 left-8 z-10 text-white"
       >
-        <h1 className="text-3xl md:text-5xl font-black italic tracking-tight">
-          DREAMSCAPE
-        </h1>
-        <p className="text-xs md:text-sm opacity-60 mt-2">Physics-driven interactive experience</p>
+        <h1 className="text-5xl md:text-6xl font-black italic tracking-tight">DREAMSCAPE</h1>
+        <p className="text-xs opacity-50 mt-2 tracking-widest">Digital Grace Manifest</p>
       </motion.div>
 
-      {/* Mobile Instructions */}
-      {isMobile && (
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="absolute bottom-8 left-8 right-8 z-10 text-white text-xs opacity-40 text-center"
-        >
-          Touch and drag to rotate • Pinch to zoom
-        </motion.div>
-      )}
-
-      {/* Back Button */}
+      {/* Back button */}
       <motion.a
         href="/"
         whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        className="absolute bottom-8 right-8 z-10 px-4 py-2 bg-white/20 backdrop-blur-md border border-white/40 rounded-full text-white text-sm font-bold hover:bg-white/30 transition-all"
+        className="absolute bottom-8 right-8 z-10 px-6 py-3 bg-white/20 backdrop-blur border border-white/30 rounded-full text-white text-sm font-bold hover:bg-white/30 transition-all"
       >
         ← Back
       </motion.a>
