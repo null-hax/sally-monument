@@ -1,177 +1,188 @@
 import React, { useRef, useMemo, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Stars, ContactShadows, Preload } from '@react-three/drei';
-import { motion } from 'framer-motion';
+import { OrbitControls, Preload } from '@react-three/drei';
 import * as THREE from 'three';
 
 /**
- * DREAMSCAPE - Frutiger Aero Interactive Experience
- * Bright, vibrant, fully interactive 3D environment
+ * DREAMSCAPE - Frutiger Aero Masterpiece
+ * Iridescent, alive, responsive, BEAUTIFUL
  */
 
-// ============ INTERACTIVE GLOSSY SPHERE ============
-function GlossySphere({ position, color, size = 1, speed = 0.3 }) {
-  const meshRef = useRef();
-  const highlightRef = useRef();
-  const [hovered, setHovered] = useState(false);
+// ============ IRIDESCENT MATERIAL ============
+const IridescentMaterial = ({ color }) => {
+  const shaderRef = useRef();
 
-  useFrame(({ clock }) => {
-    if (!meshRef.current) return;
-    
-    const t = clock.getElapsedTime() * speed;
-    meshRef.current.position.y = position[1] + Math.sin(t) * 0.5;
-    meshRef.current.rotation.x += 0.003;
-    meshRef.current.rotation.y += 0.006;
-    
-    if (highlightRef.current) {
-      highlightRef.current.rotation.x -= 0.01;
-      highlightRef.current.rotation.y -= 0.015;
+  const vertexShader = `
+    uniform float time;
+    varying vec3 vPosition;
+    varying vec3 vNormal;
+    varying float vHeight;
+
+    void main() {
+      vPosition = position;
+      vNormal = normalize(normalMatrix * normal);
+      vHeight = sin(position.x * 2.0) * cos(position.y * 2.0) * 0.5 + 0.5;
+      
+      vec3 pos = position;
+      pos.x += sin(time + position.y) * 0.1;
+      pos.y += cos(time + position.x) * 0.1;
+      pos.z += sin(time * 0.7 + position.z) * 0.1;
+      
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+    }
+  `;
+
+  const fragmentShader = `
+    uniform float time;
+    uniform vec3 uColor;
+    varying vec3 vPosition;
+    varying vec3 vNormal;
+    varying float vHeight;
+
+    void main() {
+      vec3 view = normalize(cameraPosition - vPosition);
+      float fresnel = pow(1.0 - abs(dot(vNormal, view)), 3.0);
+      
+      vec3 rainbow = vec3(
+        sin(time + vHeight * 3.14159) * 0.5 + 0.5,
+        sin(time + vHeight * 3.14159 + 2.09) * 0.5 + 0.5,
+        sin(time + vHeight * 3.14159 + 4.19) * 0.5 + 0.5
+      );
+      
+      vec3 color = mix(uColor, rainbow, fresnel * 0.6);
+      color += vec3(1.0) * fresnel * 0.3;
+      
+      gl_FragColor = vec4(color, 1.0);
+    }
+  `;
+
+  useFrame(() => {
+    if (shaderRef.current?.uniforms) {
+      shaderRef.current.uniforms.time.value += 0.016;
     }
   });
 
   return (
-    <group position={position}>
-      <mesh
-        ref={meshRef}
-        onPointerEnter={() => setHovered(true)}
-        onPointerLeave={() => setHovered(false)}
-        castShadow
-      >
-        <sphereGeometry args={[size, 128, 128]} />
-        <meshPhysicalMaterial
-          color={color}
-          metalness={0.95}
-          roughness={0.05}
-          transmission={0.2}
-          thickness={1}
-          ior={1.6}
-          emissive={hovered ? color : '#000000'}
-          emissiveIntensity={hovered ? 0.6 : 0.1}
-          clearcoat={1}
-          clearcoatRoughness={0.1}
-        />
-      </mesh>
-      
-      {/* Bright glossy overlay */}
-      <mesh ref={highlightRef} scale={1.15}>
-        <sphereGeometry args={[size, 64, 64]} />
-        <meshBasicMaterial
-          transparent
-          opacity={hovered ? 0.5 : 0.2}
-          color="#ffffff"
-          depthWrite={false}
-        />
-      </mesh>
-    </group>
+    <shaderMaterial
+      ref={shaderRef}
+      vertexShader={vertexShader}
+      fragmentShader={fragmentShader}
+      uniforms={{
+        time: { value: 0 },
+        uColor: { value: new THREE.Color(color) }
+      }}
+    />
   );
-}
+};
 
-// ============ CRYSTAL TOROID ============
-function CrystalToroid({ position, color, scale = 1, speed = 0.2 }) {
-  const meshRef = useRef();
-
-  useFrame(({ clock }) => {
-    if (!meshRef.current) return;
-    const t = clock.getElapsedTime() * speed;
-    meshRef.current.rotation.x = Math.sin(t * 0.6) * 0.8;
-    meshRef.current.rotation.y = t * 0.5;
-    meshRef.current.rotation.z = Math.cos(t * 0.4) * 0.5;
-  });
-
-  return (
-    <mesh ref={meshRef} position={position} scale={scale} castShadow receiveShadow>
-      <torusGeometry args={[3, 0.5, 16, 150]} />
-      <meshPhysicalMaterial
-        color={color}
-        metalness={0.98}
-        roughness={0.02}
-        transmission={0.4}
-        thickness={0.8}
-        ior={1.7}
-        emissive={color}
-        emissiveIntensity={0.3}
-        clearcoat={1}
-        clearcoatRoughness={0.05}
-      />
-    </mesh>
-  );
-}
-
-// ============ PARTICLE SYSTEM ============
-function Particles() {
+// ============ ORBING PARTICLE SYSTEM ============
+function OrbitingParticles() {
   const pointsRef = useRef();
   const particlesRef = useRef([]);
-  const COUNT = 1200;
+  const COUNT = 2000;
 
   useMemo(() => {
     const particles = [];
     for (let i = 0; i < COUNT; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const radius = 10 + Math.random() * 40;
+      const height = (Math.random() - 0.5) * 60;
+      
       particles.push({
         position: new THREE.Vector3(
-          (Math.random() - 0.5) * 60,
-          (Math.random() - 0.5) * 60,
-          (Math.random() - 0.5) * 60
+          Math.cos(angle) * radius,
+          height,
+          Math.sin(angle) * radius
         ),
-        velocity: new THREE.Vector3(
-          (Math.random() - 0.5) * 0.2,
-          (Math.random() - 0.5) * 0.2,
-          (Math.random() - 0.5) * 0.2
-        ),
+        velocity: new THREE.Vector3(0, 0, 0),
+        angle: angle,
+        radius: radius,
+        height: height,
+        speed: 0.3 + Math.random() * 0.7,
         life: Math.random() * 100,
-        maxLife: 100
+        maxLife: 100,
+        hue: Math.random()
       });
     }
     particlesRef.current = particles;
   }, []);
 
-  useFrame(() => {
+  useFrame(({ clock }) => {
+    const t = clock.getElapsedTime() * 0.5;
     const particles = particlesRef.current;
     
     for (let i = 0; i < particles.length; i++) {
       const p = particles[i];
-      p.position.add(p.velocity);
-      p.life--;
+      p.angle += p.speed * 0.01;
+      p.radius += Math.sin(t + i) * 0.05;
+      p.radius = Math.max(8, Math.min(50, p.radius));
+      p.height += Math.cos(t + i) * 0.1;
       
+      p.position.x = Math.cos(p.angle) * p.radius;
+      p.position.y = p.height;
+      p.position.z = Math.sin(p.angle) * p.radius;
+      
+      p.life--;
       if (p.life <= 0) {
-        p.position.set(
-          (Math.random() - 0.5) * 60,
-          (Math.random() - 0.5) * 60,
-          (Math.random() - 0.5) * 60
-        );
-        p.velocity.set(
-          (Math.random() - 0.5) * 0.2,
-          (Math.random() - 0.5) * 0.2,
-          (Math.random() - 0.5) * 0.2
-        );
         p.life = 100;
+        p.radius = 10 + Math.random() * 40;
       }
     }
 
     if (pointsRef.current) {
       const positions = new Float32Array(particles.length * 3);
+      const colors = new Float32Array(particles.length * 3);
       const sizes = new Float32Array(particles.length);
       
       for (let i = 0; i < particles.length; i++) {
-        positions[i * 3] = particles[i].position.x;
-        positions[i * 3 + 1] = particles[i].position.y;
-        positions[i * 3 + 2] = particles[i].position.z;
-        sizes[i] = (particles[i].life / particles[i].maxLife) * 0.3 + 0.05;
+        const p = particles[i];
+        positions[i * 3] = p.position.x;
+        positions[i * 3 + 1] = p.position.y;
+        positions[i * 3 + 2] = p.position.z;
+        
+        // Vibrant cycling colors: pink, cyan, yellow, magenta
+        const hue = (p.hue + clock.getElapsedTime() * 0.1) % 1;
+        let r, g, b;
+        if (hue < 0.25) {
+          r = 1; g = hue * 4; b = 0; // pink to yellow
+        } else if (hue < 0.5) {
+          r = 1 - (hue - 0.25) * 4; g = 1; b = 0; // yellow to green
+        } else if (hue < 0.75) {
+          r = 0; g = 1 - (hue - 0.5) * 4; b = 1; // cyan to blue
+        } else {
+          r = (hue - 0.75) * 4; g = 0; b = 1; // blue to magenta
+        }
+        
+        colors[i * 3] = r;
+        colors[i * 3 + 1] = g;
+        colors[i * 3 + 2] = b;
+        
+        sizes[i] = (p.life / p.maxLife) * 0.4 + 0.1;
       }
       
       pointsRef.current.geometry.attributes.position.array = positions;
       pointsRef.current.geometry.attributes.position.needsUpdate = true;
+      pointsRef.current.geometry.attributes.color.array = colors;
+      pointsRef.current.geometry.attributes.color.needsUpdate = true;
       pointsRef.current.geometry.attributes.size.array = sizes;
       pointsRef.current.geometry.attributes.size.needsUpdate = true;
     }
   });
 
   const positions = new Float32Array(COUNT * 3);
+  const colors = new Float32Array(COUNT * 3);
   const sizes = new Float32Array(COUNT);
 
   for (let i = 0; i < COUNT; i++) {
-    positions[i * 3] = (Math.random() - 0.5) * 60;
+    const angle = Math.random() * Math.PI * 2;
+    const radius = 10 + Math.random() * 40;
+    positions[i * 3] = Math.cos(angle) * radius;
     positions[i * 3 + 1] = (Math.random() - 0.5) * 60;
-    positions[i * 3 + 2] = (Math.random() - 0.5) * 60;
+    positions[i * 3 + 2] = Math.sin(angle) * radius;
+    
+    colors[i * 3] = Math.random();
+    colors[i * 3 + 1] = Math.random();
+    colors[i * 3 + 2] = Math.random();
     sizes[i] = Math.random() * 0.3 + 0.1;
   }
 
@@ -179,42 +190,46 @@ function Particles() {
     <points ref={pointsRef}>
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" count={COUNT} array={positions} itemSize={3} />
+        <bufferAttribute attach="attributes-color" count={COUNT} array={colors} itemSize={3} />
         <bufferAttribute attach="attributes-size" count={COUNT} array={sizes} itemSize={1} />
       </bufferGeometry>
-      <pointsMaterial size={0.2} color="#ff1493" sizeAttenuation transparent opacity={0.8} />
+      <pointsMaterial size={0.25} sizeAttenuation transparent opacity={0.9} vertexColors />
     </points>
   );
 }
 
-// ============ GLOWING GRID ============
-function GlowingGrid() {
-  const lineRef = useRef();
+// ============ MORPHING SPHERE ============
+function MorphingSphere({ position, color, scale = 1 }) {
+  const meshRef = useRef();
+  const [hovered, setHovered] = useState(false);
 
   useFrame(({ clock }) => {
-    if (lineRef.current) {
-      lineRef.current.rotation.z = clock.getElapsedTime() * 0.1;
-    }
+    if (!meshRef.current) return;
+    
+    const t = clock.getElapsedTime();
+    meshRef.current.rotation.x = Math.sin(t * 0.3) * 0.3;
+    meshRef.current.rotation.y = t * 0.2;
+    meshRef.current.rotation.z = Math.cos(t * 0.25) * 0.2;
+    
+    const pulse = Math.sin(t * 2) * 0.1 + 1;
+    meshRef.current.scale.set(
+      scale * pulse * (hovered ? 1.3 : 1),
+      scale * pulse * (hovered ? 1.3 : 1),
+      scale * pulse * (hovered ? 1.3 : 1)
+    );
   });
 
-  const gridSize = 40;
-  const divisions = 10;
-  const points = [];
-  
-  for (let i = -gridSize / 2; i <= gridSize / 2; i += gridSize / divisions) {
-    points.push(new THREE.Vector3(-gridSize / 2, i, 0));
-    points.push(new THREE.Vector3(gridSize / 2, i, 0));
-    points.push(new THREE.Vector3(i, -gridSize / 2, 0));
-    points.push(new THREE.Vector3(i, gridSize / 2, 0));
-  }
-
-  const geometry = new THREE.BufferGeometry().setFromPoints(points);
-
   return (
-    <group ref={lineRef} position={[0, -25, 0]}>
-      <lineSegments geometry={geometry}>
-        <lineBasicMaterial color="#00ffff" linewidth={2} transparent opacity={0.4} />
-      </lineSegments>
-    </group>
+    <mesh
+      ref={meshRef}
+      position={position}
+      onPointerEnter={() => setHovered(true)}
+      onPointerLeave={() => setHovered(false)}
+      castShadow
+    >
+      <icosahedronGeometry args={[1, 6]} />
+      <IridescentMaterial color={color} />
+    </mesh>
   );
 }
 
@@ -222,60 +237,43 @@ function GlowingGrid() {
 function Scene() {
   return (
     <>
-      <color attach="background" args={['#0f1c3f']} />
-      <fog attach="fog" args={['#1a2847', 30, 150]} />
+      <color attach="background" args={['#f5b8e6']} />
+      <fog attach="fog" args={['#f5b8e6', 20, 200]} />
 
-      {/* Bright lighting setup */}
-      <ambientLight intensity={0.8} color="#ffb3e6" />
+      {/* Lighting */}
+      <ambientLight intensity={1.2} color="#ffb3f0" />
       <directionalLight
-        position={[30, 40, 30]}
-        intensity={1.8}
-        color="#ffccff"
+        position={[50, 50, 50]}
+        intensity={2}
+        color="#ffffff"
         castShadow
         shadow-mapSize-width={4096}
         shadow-mapSize-height={4096}
-        shadow-camera-far={200}
-        shadow-camera-left={-80}
-        shadow-camera-right={80}
-        shadow-camera-top={80}
-        shadow-camera-bottom={-80}
       />
-      <pointLight position={[-40, 20, -40]} intensity={1.2} color="#00ffff" />
-      <pointLight position={[40, 20, 40]} intensity={1.2} color="#ffff00" />
+      <pointLight position={[-50, 30, 30]} intensity={1.5} color="#ff00ff" />
+      <pointLight position={[30, 30, -50]} intensity={1.5} color="#00ffff" />
 
-      {/* Environment */}
-      <Stars radius={300} depth={60} count={3000} factor={6} saturation={0.5} />
-      <GlowingGrid />
+      {/* Morphing spheres */}
+      <MorphingSphere position={[-30, 15, 20]} color="#ff1493" scale={2} />
+      <MorphingSphere position={[30, 10, 0]} color="#00ffff" scale={2.5} />
+      <MorphingSphere position={[0, 25, -30]} color="#ff00ff" scale={2} />
+      <MorphingSphere position={[-15, 5, -20]} color="#00ff88" scale={1.8} />
+      <MorphingSphere position={[20, 20, 25]} color="#ffff00" scale={1.5} />
 
-      {/* Main spheres - BRIGHT colors */}
-      <GlossySphere position={[25, 15, 0]} color="#ff1493" size={3.5} speed={0.2} />
-      <GlossySphere position={[-25, 10, 15]} color="#00ffff" size={3} speed={0.25} />
-      <GlossySphere position={[0, 20, -25]} color="#ffff00" size={2.5} speed={0.15} />
-      <GlossySphere position={[15, 5, 25]} color="#00ff00" size={2} speed={0.3} />
-      <GlossySphere position={[-15, 12, -15]} color="#ff00ff" size={2.2} speed={0.22} />
+      {/* Orbiting particles - the showcase */}
+      <OrbitingParticles />
 
-      {/* Crystal toroids */}
-      <CrystalToroid position={[20, 0, -20]} color="#ff1493" scale={1.2} speed={0.2} />\n      <CrystalToroid position={[-20, 0, 20]} color="#00ffff" scale={1} speed={0.25} />\n      <CrystalToroid position={[0, 0, 0]} color="#ffff00" scale={0.8} speed={0.15} />
-
-      {/* Particles */}
-      <Particles />
-
-      {/* Shadows */}
-      <ContactShadows position={[0, -25.9, 0]} opacity={0.3} scale={100} blur={2} far={40} />
-
-      {/* Camera - MANUAL CONTROL */}
+      {/* Camera */}
       <OrbitControls
         makeDefault
-        autoRotate={false}
+        autoRotate
+        autoRotateSpeed={1.5}
         enablePan={true}
         enableZoom={true}
         enableDamping
-        dampingFactor={0.08}
+        dampingFactor={0.1}
         maxDistance={150}
-        minDistance={30}
-        maxPolarAngle={Math.PI * 0.95}
-        minPolarAngle={Math.PI * 0.05}
-        autoRotateSpeed={0}
+        minDistance={40}
       />
 
       <Preload all />
@@ -283,20 +281,19 @@ function Scene() {
   );
 }
 
-// ============ MAIN COMPONENT ============
+// ============ MAIN ============
 export default function Dreamscape() {
   return (
-    <div className="w-full h-screen bg-gradient-to-b from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
+    <div className="w-full h-screen relative overflow-hidden">
       <Canvas
         shadows
-        camera={{ position: [60, 40, 60], fov: 45 }}
+        camera={{ position: [80, 50, 80], fov: 40 }}
         gl={{
           antialias: true,
           alpha: false,
           powerPreference: 'high-performance',
           stencil: false,
-          depth: true,
-          logarithmicDepthBuffer: true
+          depth: true
         }}
         dpr={[1, 2]}
         frameloop="always"
@@ -304,26 +301,11 @@ export default function Dreamscape() {
         <Scene />
       </Canvas>
 
-      {/* Minimal UI */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1 }}
-        className="absolute top-6 left-6 z-10 text-white pointer-events-none"
-      >
-        <h1 className="text-5xl font-black italic tracking-tighter">DREAMSCAPE</h1>
-        <p className="text-[10px] opacity-60 tracking-[0.2em] mt-1">Drag to rotate • Scroll to zoom</p>
-      </motion.div>
-
-      {/* Instructions */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1.5 }}
-        className="absolute bottom-6 left-6 z-10 text-white/40 text-xs pointer-events-none"
-      >
-        <p>Hover over spheres for interaction</p>
-      </motion.div>
+      {/* Minimal, elegant UI */}
+      <div className="absolute top-8 left-8 z-10 text-white pointer-events-none">
+        <h1 className="text-6xl font-black italic tracking-tighter drop-shadow-lg">DREAMSCAPE</h1>
+        <p className="text-xs opacity-70 tracking-widest mt-2">Interactive • Alive • Beautiful</p>
+      </div>
     </div>
   );
 }
