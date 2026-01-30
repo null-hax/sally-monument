@@ -1,34 +1,31 @@
 import React, { useRef, useMemo, useState } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Stars, ContactShadows, Preload } from '@react-three/drei';
 import { motion } from 'framer-motion';
 import * as THREE from 'three';
 
 /**
- * DREAMSCAPE - Interactive 3D Experience
- * Frutiger Aero aesthetic with physics, particles, and buttery-smooth performance
+ * DREAMSCAPE - Frutiger Aero Interactive Experience
+ * Bright, vibrant, fully interactive 3D environment
  */
 
 // ============ INTERACTIVE GLOSSY SPHERE ============
-function GlossySphere({ position, color, size = 1, speed = 1 }) {
+function GlossySphere({ position, color, size = 1, speed = 0.3 }) {
   const meshRef = useRef();
+  const highlightRef = useRef();
   const [hovered, setHovered] = useState(false);
 
   useFrame(({ clock }) => {
     if (!meshRef.current) return;
     
     const t = clock.getElapsedTime() * speed;
-    // Gentle bobbing
-    meshRef.current.position.y = position[1] + Math.sin(t * 0.7) * 0.3;
-    // Smooth rotation
-    meshRef.current.rotation.x += 0.005;
-    meshRef.current.rotation.y += 0.008;
+    meshRef.current.position.y = position[1] + Math.sin(t) * 0.5;
+    meshRef.current.rotation.x += 0.003;
+    meshRef.current.rotation.y += 0.006;
     
-    // Pulse on hover
-    if (hovered) {
-      meshRef.current.scale.lerp(new THREE.Vector3(1.2, 1.2, 1.2), 0.1);
-    } else {
-      meshRef.current.scale.lerp(new THREE.Vector3(1, 1, 1), 0.1);
+    if (highlightRef.current) {
+      highlightRef.current.rotation.x -= 0.01;
+      highlightRef.current.rotation.y -= 0.015;
     }
   });
 
@@ -36,59 +33,65 @@ function GlossySphere({ position, color, size = 1, speed = 1 }) {
     <group position={position}>
       <mesh
         ref={meshRef}
-        position={[0, 0, 0]}
         onPointerEnter={() => setHovered(true)}
         onPointerLeave={() => setHovered(false)}
         castShadow
       >
-        <sphereGeometry args={[size, 64, 64]} />
+        <sphereGeometry args={[size, 128, 128]} />
         <meshPhysicalMaterial
           color={color}
-          metalness={0.9}
-          roughness={0.1}
-          transmission={0.1}
-          thickness={0.5}
-          ior={1.5}
+          metalness={0.95}
+          roughness={0.05}
+          transmission={0.2}
+          thickness={1}
+          ior={1.6}
           emissive={hovered ? color : '#000000'}
-          emissiveIntensity={hovered ? 0.4 : 0.05}
+          emissiveIntensity={hovered ? 0.6 : 0.1}
+          clearcoat={1}
+          clearcoatRoughness={0.1}
         />
       </mesh>
       
-      {/* Glossy highlight */}
-      <mesh position={[0, 0, 0]} scale={1.05}>
-        <sphereGeometry args={[size, 32, 32]} />
+      {/* Bright glossy overlay */}
+      <mesh ref={highlightRef} scale={1.15}>
+        <sphereGeometry args={[size, 64, 64]} />
         <meshBasicMaterial
           transparent
-          opacity={hovered ? 0.4 : 0.15}
+          opacity={hovered ? 0.5 : 0.2}
           color="#ffffff"
+          depthWrite={false}
         />
       </mesh>
     </group>
   );
 }
 
-// ============ CRYSTAL RING ============
-function CrystalRing({ position, color, scale = 1, speed = 1 }) {
+// ============ CRYSTAL TOROID ============
+function CrystalToroid({ position, color, scale = 1, speed = 0.2 }) {
   const meshRef = useRef();
 
   useFrame(({ clock }) => {
     if (!meshRef.current) return;
     const t = clock.getElapsedTime() * speed;
-    meshRef.current.rotation.x = Math.sin(t * 0.5) * 0.5;
-    meshRef.current.rotation.y = t * 0.4;
-    meshRef.current.rotation.z = Math.cos(t * 0.3) * 0.3;
+    meshRef.current.rotation.x = Math.sin(t * 0.6) * 0.8;
+    meshRef.current.rotation.y = t * 0.5;
+    meshRef.current.rotation.z = Math.cos(t * 0.4) * 0.5;
   });
 
   return (
-    <mesh ref={meshRef} position={position} scale={scale} castShadow>
-      <torusGeometry args={[2, 0.3, 16, 100]} />
+    <mesh ref={meshRef} position={position} scale={scale} castShadow receiveShadow>
+      <torusGeometry args={[3, 0.5, 16, 150]} />
       <meshPhysicalMaterial
         color={color}
-        metalness={0.95}
-        roughness={0.05}
-        transmission={0.3}
+        metalness={0.98}
+        roughness={0.02}
+        transmission={0.4}
+        thickness={0.8}
+        ior={1.7}
         emissive={color}
-        emissiveIntensity={0.2}
+        emissiveIntensity={0.3}
+        clearcoat={1}
+        clearcoatRoughness={0.05}
       />
     </mesh>
   );
@@ -98,21 +101,21 @@ function CrystalRing({ position, color, scale = 1, speed = 1 }) {
 function Particles() {
   const pointsRef = useRef();
   const particlesRef = useRef([]);
-  const countRef = useRef(800);
+  const COUNT = 1200;
 
   useMemo(() => {
     const particles = [];
-    for (let i = 0; i < countRef.current; i++) {
+    for (let i = 0; i < COUNT; i++) {
       particles.push({
         position: new THREE.Vector3(
-          (Math.random() - 0.5) * 30,
-          Math.random() * 20,
-          (Math.random() - 0.5) * 30
+          (Math.random() - 0.5) * 60,
+          (Math.random() - 0.5) * 60,
+          (Math.random() - 0.5) * 60
         ),
         velocity: new THREE.Vector3(
-          (Math.random() - 0.5) * 0.3,
-          (Math.random() - 0.5) * 0.3,
-          (Math.random() - 0.5) * 0.3
+          (Math.random() - 0.5) * 0.2,
+          (Math.random() - 0.5) * 0.2,
+          (Math.random() - 0.5) * 0.2
         ),
         life: Math.random() * 100,
         maxLife: 100
@@ -131,9 +134,14 @@ function Particles() {
       
       if (p.life <= 0) {
         p.position.set(
-          (Math.random() - 0.5) * 30,
-          Math.random() * 20,
-          (Math.random() - 0.5) * 30
+          (Math.random() - 0.5) * 60,
+          (Math.random() - 0.5) * 60,
+          (Math.random() - 0.5) * 60
+        );
+        p.velocity.set(
+          (Math.random() - 0.5) * 0.2,
+          (Math.random() - 0.5) * 0.2,
+          (Math.random() - 0.5) * 0.2
         );
         p.life = 100;
       }
@@ -147,7 +155,7 @@ function Particles() {
         positions[i * 3] = particles[i].position.x;
         positions[i * 3 + 1] = particles[i].position.y;
         positions[i * 3 + 2] = particles[i].position.z;
-        sizes[i] = (particles[i].life / particles[i].maxLife) * 0.15;
+        sizes[i] = (particles[i].life / particles[i].maxLife) * 0.3 + 0.05;
       }
       
       pointsRef.current.geometry.attributes.position.array = positions;
@@ -157,164 +165,117 @@ function Particles() {
     }
   });
 
-  const positions = new Float32Array(countRef.current * 3);
-  const sizes = new Float32Array(countRef.current);
+  const positions = new Float32Array(COUNT * 3);
+  const sizes = new Float32Array(COUNT);
 
-  for (let i = 0; i < countRef.current; i++) {
-    positions[i * 3] = (Math.random() - 0.5) * 30;
-    positions[i * 3 + 1] = Math.random() * 20;
-    positions[i * 3 + 2] = (Math.random() - 0.5) * 30;
-    sizes[i] = Math.random() * 0.2;
+  for (let i = 0; i < COUNT; i++) {
+    positions[i * 3] = (Math.random() - 0.5) * 60;
+    positions[i * 3 + 1] = (Math.random() - 0.5) * 60;
+    positions[i * 3 + 2] = (Math.random() - 0.5) * 60;
+    sizes[i] = Math.random() * 0.3 + 0.1;
   }
 
   return (
     <points ref={pointsRef}>
       <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          count={countRef.current}
-          array={positions}
-          itemSize={3}
-        />
-        <bufferAttribute
-          attach="attributes-size"
-          count={countRef.current}
-          array={sizes}
-          itemSize={1}
-        />
+        <bufferAttribute attach="attributes-position" count={COUNT} array={positions} itemSize={3} />
+        <bufferAttribute attach="attributes-size" count={COUNT} array={sizes} itemSize={1} />
       </bufferGeometry>
-      <pointsMaterial
-        size={0.15}
-        color="#ff1493"
-        sizeAttenuation
-        transparent
-        opacity={0.6}
-      />
+      <pointsMaterial size={0.2} color="#ff1493" sizeAttenuation transparent opacity={0.8} />
     </points>
   );
 }
 
-// ============ WAVE GROUND ============
-function WaveGround() {
-  const meshRef = useRef();
-  const materialRef = useRef();
+// ============ GLOWING GRID ============
+function GlowingGrid() {
+  const lineRef = useRef();
 
-  const vertexShader = `
-    uniform float time;
-    varying vec2 vUv;
-    varying float vWave;
-
-    void main() {
-      vUv = uv;
-      vec3 pos = position;
-      float wave1 = sin((pos.x + time) * 0.5) * 0.8;
-      float wave2 = cos((pos.z + time * 0.7) * 0.5) * 0.8;
-      pos.y += wave1 + wave2;
-      vWave = (wave1 + wave2) * 0.5;
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
-    }
-  `;
-
-  const fragmentShader = `
-    uniform vec3 uColor;
-    uniform float time;
-    varying vec2 vUv;
-    varying float vWave;
-
-    void main() {
-      vec3 col = uColor;
-      col += vec3(sin(time) * 0.1, cos(time * 0.7) * 0.1, 0.1);
-      col = mix(col, vec3(1.0), vWave * 0.2);
-      gl_FragColor = vec4(col, 0.85);
-    }
-  `;
-
-  useFrame(() => {
-    if (materialRef.current?.uniforms) {
-      materialRef.current.uniforms.time.value += 0.016;
+  useFrame(({ clock }) => {
+    if (lineRef.current) {
+      lineRef.current.rotation.z = clock.getElapsedTime() * 0.1;
     }
   });
 
+  const gridSize = 40;
+  const divisions = 10;
+  const points = [];
+  
+  for (let i = -gridSize / 2; i <= gridSize / 2; i += gridSize / divisions) {
+    points.push(new THREE.Vector3(-gridSize / 2, i, 0));
+    points.push(new THREE.Vector3(gridSize / 2, i, 0));
+    points.push(new THREE.Vector3(i, -gridSize / 2, 0));
+    points.push(new THREE.Vector3(i, gridSize / 2, 0));
+  }
+
+  const geometry = new THREE.BufferGeometry().setFromPoints(points);
+
   return (
-    <mesh ref={meshRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, -15, 0]} receiveShadow>
-      <planeGeometry args={[60, 60, 128, 128]} />
-      <shaderMaterial
-        ref={materialRef}
-        vertexShader={vertexShader}
-        fragmentShader={fragmentShader}
-        uniforms={{
-          time: { value: 0 },
-          uColor: { value: new THREE.Color('#ff1493') }
-        }}
-        transparent
-        side={THREE.DoubleSide}
-      />
-    </mesh>
+    <group ref={lineRef} position={[0, -25, 0]}>
+      <lineSegments geometry={geometry}>
+        <lineBasicMaterial color="#00ffff" linewidth={2} transparent opacity={0.4} />
+      </lineSegments>
+    </group>
   );
 }
 
 // ============ SCENE ============
 function Scene() {
-  const controlsRef = useRef();
-
   return (
     <>
-      <color attach="background" args={['#0a0a1f']} />
-      <fog attach="fog" args={['#0f0f2e', 20, 100]} />
+      <color attach="background" args={['#0f1c3f']} />
+      <fog attach="fog" args={['#1a2847', 30, 150]} />
 
-      {/* Lighting */}
-      <ambientLight intensity={0.6} color="#ff1493" />
+      {/* Bright lighting setup */}
+      <ambientLight intensity={0.8} color="#ffb3e6" />
       <directionalLight
-        position={[20, 30, 20]}
-        intensity={1.2}
-        color="#ff69b4"
+        position={[30, 40, 30]}
+        intensity={1.8}
+        color="#ffccff"
         castShadow
-        shadow-mapSize-width={2048}
-        shadow-mapSize-height={2048}
+        shadow-mapSize-width={4096}
+        shadow-mapSize-height={4096}
+        shadow-camera-far={200}
+        shadow-camera-left={-80}
+        shadow-camera-right={80}
+        shadow-camera-top={80}
+        shadow-camera-bottom={-80}
       />
-      <pointLight position={[-20, 10, -20]} intensity={0.6} color="#00ffff" />
+      <pointLight position={[-40, 20, -40]} intensity={1.2} color="#00ffff" />
+      <pointLight position={[40, 20, 40]} intensity={1.2} color="#ffff00" />
 
-      {/* Stars background */}
-      <Stars radius={200} depth={50} count={2000} factor={4} saturation={0.3} />
+      {/* Environment */}
+      <Stars radius={300} depth={60} count={3000} factor={6} saturation={0.5} />
+      <GlowingGrid />
 
-      {/* Main elements */}
-      <GlossySphere position={[10, 8, 0]} color="#ff1493" size={2.5} speed={0.5} />
-      <GlossySphere position={[-10, 6, 5]} color="#00ffff" size={2} speed={0.7} />
-      <GlossySphere position={[0, 10, -12]} color="#ffff00" size={1.5} speed={0.6} />
+      {/* Main spheres - BRIGHT colors */}
+      <GlossySphere position={[25, 15, 0]} color="#ff1493" size={3.5} speed={0.2} />
+      <GlossySphere position={[-25, 10, 15]} color="#00ffff" size={3} speed={0.25} />
+      <GlossySphere position={[0, 20, -25]} color="#ffff00" size={2.5} speed={0.15} />
+      <GlossySphere position={[15, 5, 25]} color="#00ff00" size={2} speed={0.3} />
+      <GlossySphere position={[-15, 12, -15]} color="#ff00ff" size={2.2} speed={0.22} />
 
-      {/* Crystal rings */}
-      <CrystalRing position={[8, -2, -8]} color="#00ff00" scale={1.2} speed={0.3} />
-      <CrystalRing position={[-8, 0, 8]} color="#ff00ff" scale={1} speed={0.4} />
-      <CrystalRing position={[0, 5, 0]} color="#00ffff" scale={0.8} speed={0.5} />
+      {/* Crystal toroids */}
+      <CrystalToroid position={[20, 0, -20]} color="#ff1493" scale={1.2} speed={0.2} />\n      <CrystalToroid position={[-20, 0, 20]} color="#00ffff" scale={1} speed={0.25} />\n      <CrystalToroid position={[0, 0, 0]} color="#ffff00" scale={0.8} speed={0.15} />
 
       {/* Particles */}
       <Particles />
 
-      {/* Ground */}
-      <WaveGround />
-
       {/* Shadows */}
-      <ContactShadows
-        position={[0, -14.9, 0]}
-        opacity={0.4}
-        scale={60}
-        blur={3}
-        far={20}
-      />
+      <ContactShadows position={[0, -25.9, 0]} opacity={0.3} scale={100} blur={2} far={40} />
 
-      {/* Camera controls */}
+      {/* Camera - MANUAL CONTROL */}
       <OrbitControls
-        ref={controlsRef}
         makeDefault
-        autoRotate
-        autoRotateSpeed={2}
+        autoRotate={false}
         enablePan={true}
         enableZoom={true}
         enableDamping
-        dampingFactor={0.05}
-        maxDistance={80}
-        minDistance={20}
-        maxPolarAngle={Math.PI * 0.9}
+        dampingFactor={0.08}
+        maxDistance={150}
+        minDistance={30}
+        maxPolarAngle={Math.PI * 0.95}
+        minPolarAngle={Math.PI * 0.05}
+        autoRotateSpeed={0}
       />
 
       <Preload all />
@@ -325,42 +286,44 @@ function Scene() {
 // ============ MAIN COMPONENT ============
 export default function Dreamscape() {
   return (
-    <div className="w-full h-screen bg-black relative">
+    <div className="w-full h-screen bg-gradient-to-b from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
       <Canvas
         shadows
-        camera={{ position: [40, 30, 40], fov: 50 }}
+        camera={{ position: [60, 40, 60], fov: 45 }}
         gl={{
           antialias: true,
           alpha: false,
           powerPreference: 'high-performance',
           stencil: false,
-          depth: true
+          depth: true,
+          logarithmicDepthBuffer: true
         }}
-        dpr={[1, 1.5]}
+        dpr={[1, 2]}
         frameloop="always"
       >
         <Scene />
       </Canvas>
 
-      {/* UI */}
+      {/* Minimal UI */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5 }}
-        className="absolute top-8 left-8 z-10 text-white"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1 }}
+        className="absolute top-6 left-6 z-10 text-white pointer-events-none"
       >
-        <h1 className="text-5xl md:text-6xl font-black italic tracking-tight">DREAMSCAPE</h1>
-        <p className="text-xs opacity-50 mt-2 tracking-widest">Digital Grace Manifest</p>
+        <h1 className="text-5xl font-black italic tracking-tighter">DREAMSCAPE</h1>
+        <p className="text-[10px] opacity-60 tracking-[0.2em] mt-1">Drag to rotate • Scroll to zoom</p>
       </motion.div>
 
-      {/* Back button */}
-      <motion.a
-        href="/"
-        whileHover={{ scale: 1.05 }}
-        className="absolute bottom-8 right-8 z-10 px-6 py-3 bg-white/20 backdrop-blur border border-white/30 rounded-full text-white text-sm font-bold hover:bg-white/30 transition-all"
+      {/* Instructions */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1.5 }}
+        className="absolute bottom-6 left-6 z-10 text-white/40 text-xs pointer-events-none"
       >
-        ← Back
-      </motion.a>
+        <p>Hover over spheres for interaction</p>
+      </motion.div>
     </div>
   );
 }
